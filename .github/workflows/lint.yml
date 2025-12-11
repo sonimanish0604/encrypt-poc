@@ -1,5 +1,8 @@
 name: Lint
 
+permissions:
+  contents: read
+
 on:
   pull_request:
     branches: ["main"]
@@ -17,6 +20,8 @@ jobs:
           python-version: "3.12"
 
       - name: Install Ruff
+        env:
+          PIP_ROOT_USER_ACTION: ignore
         run: pip install ruff==0.4.4
 
       - name: Run Ruff
