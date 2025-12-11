@@ -138,6 +138,8 @@ def _get_active_dek():
     conn.close()
 
     key_id, dek_wrapped = row
+    if isinstance(dek_wrapped, (bytes, bytearray)):
+        dek_wrapped = dek_wrapped.decode("utf-8")
     dek_plain = vault_decrypt_key(VAULT_ADDR, VAULT_TOKEN, VAULT_TRANSIT_KEY, dek_wrapped)
     return key_id, dek_plain
 

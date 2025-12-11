@@ -1,0 +1,29 @@
+name: Integration
+
+permissions:
+  contents: read
+
+on:
+  push:
+    branches: ["develop", "main"]
+
+jobs:
+  integration:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Run integration script
+        env:
+          PIP_ROOT_USER_ACTION: ignore
+        run: |
+          chmod +x scripts/run_integration.sh
+          mkdir -p reports
+          ./scripts/run_integration.sh | tee reports/integration.log
+
+      - name: Upload integration report
+        uses: actions/upload-artifact@v4
+        with:
+          name: integration-report
+          path: reports/integration.log

@@ -1,0 +1,28 @@
+name: Lint
+
+permissions:
+  contents: read
+
+on:
+  pull_request:
+    branches: ["main"]
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install Ruff
+        env:
+          PIP_ROOT_USER_ACTION: ignore
+        run: pip install ruff==0.4.4
+
+      - name: Run Ruff
+        run: ruff check app

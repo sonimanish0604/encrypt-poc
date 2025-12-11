@@ -42,11 +42,14 @@ def run_etl() -> None:
         return
 
     for row in rows:
+        dek_wrapped = row["dek_wrapped"]
+        if isinstance(dek_wrapped, (bytes, bytearray)):
+            dek_wrapped = dek_wrapped.decode("utf-8")
         dek_plain = vault_decrypt_key(
             settings.vault_addr,
             settings.vault_token,
             settings.vault_transit_key,
-            row["dek_wrapped"],
+            dek_wrapped,
         )
         first_name = _decrypt_field(dek_plain, row["first_name_enc"], "first_name")
         middle_name = _decrypt_field(dek_plain, row["middle_name_enc"], "middle_name")
