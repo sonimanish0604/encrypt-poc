@@ -226,7 +226,7 @@ Database cannot access keys
 
 Easily shareable on GitHub
 
-Perfect for LinkedIn content and demonstrating hands-on skills
+
 
 🛣 Future Enhancements
 
