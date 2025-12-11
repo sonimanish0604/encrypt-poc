@@ -1,0 +1,28 @@
+@startuml
+title DNC Preferences - Encryption PoC Architecture
+
+package "Client Layer" {
+  [DNC Webform]
+}
+
+package "Application Layer" {
+  [DNC API Service]
+  [ETL Job]
+}
+
+package "Security / KMS" {
+  [Vault Transit (KEK)]
+}
+
+package "Data Layer" {
+  database "MySQL" as DB
+}
+
+[DNC Webform] --> [DNC API Service] : HTTPS / POST /submit
+[DNC API Service] --> DB : INSERT encrypted PII\ninto contact_form
+[DNC API Service] --> [Vault Transit (KEK)] : Wrap/unwrap DEK
+[ETL Job] --> DB : SELECT encrypted PII
+[ETL Job] --> [Vault Transit (KEK)] : Unwrap DEK
+[ETL Job] --> DB : (optional) write ETL status/logs
+
+@enduml

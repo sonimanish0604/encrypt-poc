@@ -1,0 +1,7 @@
+fastapi==0.110.1
+uvicorn==0.29.0
+pydantic==2.6.4
+mysql-connector-python==9.0.0
+cryptography==42.0.5
+requests==2.31.0
+email-validator==2.1.1

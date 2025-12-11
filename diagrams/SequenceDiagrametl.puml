@@ -1,0 +1,22 @@
+@startuml
+title Sequence - ETL Decrypt DNC Records
+
+participant "ETL Job" as ETL
+database "MySQL" as DB
+participant "Vault Transit" as Vault
+
+ETL -> DB: SELECT id, encrypted fields,\nkey_id FROM contact_form
+DB --> ETL: Result set
+
+ETL -> DB: SELECT id, dek_wrapped\nFROM encryption_keys WHERE id IN (key_ids)
+DB --> ETL: dek_wrapped set
+
+ETL -> Vault: decrypt(pii-master, dek_wrapped) for each key_id
+Vault --> ETL: dek_plain for each key_id
+
+ETL -> ETL: AES-GCM decrypt PII fields\nwith dek_plain + correct AAD
+
+ETL -> ETL: Build plaintext dataset\n(JSON/CSV)
+ETL --> ETL: Write to stdout / data lake (PoC)
+
+@enduml

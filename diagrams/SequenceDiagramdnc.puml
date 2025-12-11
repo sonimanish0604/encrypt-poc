@@ -1,0 +1,26 @@
+@startuml
+title Sequence - Submit DNC Preferences
+
+actor User
+participant "Webform" as UI
+participant "DNC API" as API
+participant "Vault Transit" as Vault
+database "MySQL" as DB
+
+User -> UI: Fill DNC form\n(first/middle/last, phone, email, toggles)
+UI -> API: POST /submit\n(JSON payload)
+
+API -> DB: SELECT id, dek_wrapped\nFROM encryption_keys\nWHERE logical_name='contact_pii' AND status='active'
+DB --> API: dek_id, dek_wrapped
+
+API -> Vault: decrypt(pii-master, dek_wrapped)
+Vault --> API: dek_plain (DEK)
+
+API -> API: AES-GCM encrypt PII fields\nusing dek_plain + AAD
+
+API -> DB: INSERT INTO contact_form\n(encrypted fields + DNC flags + dek_id)
+DB --> API: OK
+
+API --> UI: 201 Created / status=ok
+
+@enduml

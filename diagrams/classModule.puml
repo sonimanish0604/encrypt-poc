@@ -1,0 +1,36 @@
+@startuml
+title Module/Class View
+
+package "app" {
+  class main {
+    +startup_event()
+    +submit_form()
+  }
+
+  class crypto_utils {
+    +aes_gcm_encrypt()
+    +aes_gcm_decrypt()
+    +vault_encrypt_key()
+    +vault_decrypt_key()
+  }
+
+  class db {
+    +get_connection()
+    +init_schema()
+  }
+
+  class etl {
+    +run_etl()
+  }
+
+  class config {
+    +get_settings()
+  }
+}
+
+main --> db
+main --> crypto_utils
+etl --> db
+etl --> crypto_utils
+
+@enduml
