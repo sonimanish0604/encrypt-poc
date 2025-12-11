@@ -1,0 +1,30 @@
+name: CI
+
+on:
+  push:
+    branches: ["develop", "main"]
+  pull_request:
+    branches: ["main"]
+
+jobs:
+  lint-and-integration:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install linters
+        run: pip install ruff==0.4.4
+
+      - name: Run Ruff
+        run: ruff check app
+
+      - name: Integration test via Docker Compose
+        run: |
+          chmod +x scripts/run_integration.sh
+          ./scripts/run_integration.sh
