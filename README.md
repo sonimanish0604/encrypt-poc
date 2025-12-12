@@ -87,6 +87,13 @@ Docker
 Docker Compose
 (No Python or Vault installation is required — everything runs in containers.)
 
+Default Credentials
+
+| Component | How to Access | Credentials |
+| --------- | ------------- | ----------- |
+| **Vault (dev mode)** | http://localhost:8200 or `docker exec -it enc_vault sh` | Token `root` |
+| **MySQL / Adminer** | Host `mysql`, Adminer at http://localhost:8080 | User `root`, Password `rootpassword`, DB `enc_poc` |
+
 ▶️ How to Run the PoC
 1. **Clone & start containers**
 
