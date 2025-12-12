@@ -87,6 +87,13 @@ Docker
 Docker Compose
 (No Python or Vault installation is required — everything runs in containers.)
 
+Default Credentials
+
+| Component | How to Access | Credentials |
+| --------- | ------------- | ----------- |
+| **Vault (dev mode)** | http://localhost:8200 or `docker exec -it enc_vault sh` | Token `root` |
+| **MySQL / Adminer** | Host `mysql`, Adminer at http://localhost:8080 | User `root`, Password `rootpassword`, DB `enc_poc` |
+
 ▶️ How to Run the PoC
 1. **Clone & start containers**
 
@@ -105,8 +112,9 @@ This launches:
 
 On startup the API waits for Vault/MySQL, mounts the transit engine, creates the `pii-master` KEK if missing, and seeds an active wrapped DEK in MySQL.
 
-2. **Submit DNC preferences (Swagger or curl)**
+2. **Submit DNC preferences (Webform, Swagger, or curl)**
 
+- Webform: http://localhost:8000/webform → Fill the fields and toggle the “Do Not Contact” sliders for phone/email before hitting **Submit Preferences**.
 - Swagger UI: http://localhost:8000/docs → `POST /submit` → “Try it out”.
 - Curl:
 
@@ -155,6 +163,8 @@ Row 1:
 ```
 
 ETL joins each row on `encryption_keys`, asks Vault to unwrap the DEK, then performs AES-GCM decrypt—no plaintext keys or data ever touch MySQL.
+
+Prefer a UI? Visit http://localhost:8000/etl-view and click **Run ETL** to call the same decrypt endpoint and render the plaintext results in the browser.
 
 🔐 Key Management & KEK Rotation
 What is rotated?

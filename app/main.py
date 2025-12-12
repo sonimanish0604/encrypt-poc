@@ -1,13 +1,17 @@
 import secrets
 import time
+from pathlib import Path
 from typing import Optional
 
-from fastapi import FastAPI
+from fastapi import FastAPI, HTTPException
+from fastapi.responses import HTMLResponse, JSONResponse
 from pydantic import BaseModel, EmailStr, Field
+from requests import HTTPError
 
 from config import get_settings
 from crypto_utils import aes_gcm_encrypt, vault_decrypt_key, vault_encrypt_key
 from db import get_connection, init_schema
+from etl import decrypt_records
 
 app = FastAPI(title="Encryption PoC")
 
@@ -17,6 +21,10 @@ VAULT_TOKEN = settings.vault_token
 VAULT_TRANSIT_KEY = settings.vault_transit_key
 LOGICAL_NAME = "contact_pii"
 KEK_ID = "vault-transit:pii-master"
+WEBFORM_PATH = Path(__file__).resolve().parent / "static" / "webform.html"
+ETL_VIEW_PATH = Path(__file__).resolve().parent / "static" / "etl_view.html"
+WEBFORM_HTML = WEBFORM_PATH.read_text(encoding="utf-8")
+ETL_VIEW_HTML = ETL_VIEW_PATH.read_text(encoding="utf-8")
 
 
 class ContactForm(BaseModel):
@@ -140,7 +148,13 @@ def _get_active_dek():
     key_id, dek_wrapped = row
     if isinstance(dek_wrapped, (bytes, bytearray)):
         dek_wrapped = dek_wrapped.decode("utf-8")
-    dek_plain = vault_decrypt_key(VAULT_ADDR, VAULT_TOKEN, VAULT_TRANSIT_KEY, dek_wrapped)
+    try:
+        dek_plain = vault_decrypt_key(VAULT_ADDR, VAULT_TOKEN, VAULT_TRANSIT_KEY, dek_wrapped)
+    except HTTPError as exc:
+        if exc.response is not None and exc.response.status_code == 400:
+            _handle_stale_keys()
+            return _get_active_dek()
+        raise
     return key_id, dek_plain
 
 
@@ -186,3 +200,38 @@ def submit_form(form: ContactForm):
 @app.get("/")
 def root():
     return {"message": "Encryption PoC is running. POST /submit with form data."}
+
+
+@app.get("/webform", response_class=HTMLResponse)
+def render_webform():
+    return WEBFORM_HTML
+
+
+@app.get("/etl-view", response_class=HTMLResponse)
+def render_etl_view():
+    return ETL_VIEW_HTML
+
+
+@app.get("/etl/records")
+def get_etl_records():
+    try:
+        records = decrypt_records()
+    except HTTPError as exc:
+        if exc.response is not None and exc.response.status_code == 400:
+            _handle_stale_keys()
+            records = decrypt_records()
+        else:
+            raise HTTPException(status_code=500, detail="Failed to run ETL")
+    return JSONResponse({"records": records})
+
+
+def _handle_stale_keys():
+    """Dev-mode helper: if Vault lost its keys, wipe DB rows and create a new DEK."""
+    conn = get_connection()
+    cur = conn.cursor()
+    cur.execute("DELETE FROM contact_form")
+    cur.execute("DELETE FROM encryption_keys")
+    conn.commit()
+    cur.close()
+    conn.close()
+    _ensure_active_dek()

@@ -1,4 +1,4 @@
-from typing import Optional
+from typing import List, Optional
 
 from config import get_settings
 from crypto_utils import aes_gcm_decrypt, vault_decrypt_key
@@ -12,7 +12,8 @@ def _decrypt_field(dek: bytes, blob: Optional[bytes], label: str) -> Optional[st
     return plaintext.decode("utf-8")
 
 
-def run_etl() -> None:
+def decrypt_records() -> List[dict]:
+    """Return decrypted contact form rows for API and CLI consumption."""
     settings = get_settings()
     conn = get_connection()
     cur = conn.cursor(dictionary=True)
@@ -27,6 +28,7 @@ def run_etl() -> None:
             dp.email_enc,
             dp.phone_dnc,
             dp.email_dnc,
+            dp.created_at,
             ek.dek_wrapped
         FROM contact_form dp
         JOIN encryption_keys ek ON dp.key_id = ek.id
@@ -37,10 +39,7 @@ def run_etl() -> None:
     cur.close()
     conn.close()
 
-    if not rows:
-        print("No rows found.")
-        return
-
+    records: List[dict] = []
     for row in rows:
         dek_wrapped = row["dek_wrapped"]
         if isinstance(dek_wrapped, (bytes, bytearray)):
@@ -51,19 +50,36 @@ def run_etl() -> None:
             settings.vault_transit_key,
             dek_wrapped,
         )
-        first_name = _decrypt_field(dek_plain, row["first_name_enc"], "first_name")
-        middle_name = _decrypt_field(dek_plain, row["middle_name_enc"], "middle_name")
-        last_name = _decrypt_field(dek_plain, row["last_name_enc"], "last_name")
-        phone = _decrypt_field(dek_plain, row["phone_enc"], "phone")
-        email = _decrypt_field(dek_plain, row["email_enc"], "email")
+        records.append(
+            {
+                "id": row["id"],
+                "first_name": _decrypt_field(dek_plain, row["first_name_enc"], "first_name"),
+                "middle_name": _decrypt_field(dek_plain, row["middle_name_enc"], "middle_name"),
+                "last_name": _decrypt_field(dek_plain, row["last_name_enc"], "last_name"),
+                "phone": _decrypt_field(dek_plain, row["phone_enc"], "phone"),
+                "email": _decrypt_field(dek_plain, row["email_enc"], "email"),
+                "phone_dnc": bool(row["phone_dnc"]),
+                "email_dnc": bool(row["email_dnc"]),
+                "created_at": row["created_at"].isoformat() if row["created_at"] else None,
+            }
+        )
+    return records
 
-        print(f"Row {row['id']}:")
-        print(f"  First Name: {first_name}")
-        print(f"  Middle Name: {middle_name or '-'}")
-        print(f"  Last Name: {last_name}")
-        print(f"  Phone: {phone}")
-        print(f"  Email: {email}")
-        print(f"  Flags: phone_dnc={bool(row['phone_dnc'])} email_dnc={bool(row['email_dnc'])}")
+
+def run_etl() -> None:
+    records = decrypt_records()
+    if not records:
+        print("No rows found.")
+        return
+
+    for rec in records:
+        print(f"Row {rec['id']}:")
+        print(f"  First Name: {rec['first_name']}")
+        print(f"  Middle Name: {rec['middle_name'] or '-'}")
+        print(f"  Last Name: {rec['last_name']}")
+        print(f"  Phone: {rec['phone']}")
+        print(f"  Email: {rec['email']}")
+        print(f"  Flags: phone_dnc={rec['phone_dnc']} email_dnc={rec['email_dnc']}")
         print("")
 
 
