@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Decrypted PII Preview</title>
+  <style>
+    * { box-sizing: border-box; font-family: Arial, sans-serif; }
+    body {
+      background: #0f172a;
+      margin: 0;
+      min-height: 100vh;
+      display: flex;
+      justify-content: center;
+      align-items: flex-start;
+      padding: 2rem 1rem;
+      color: #e2e8f0;
+    }
+    .panel {
+      background: #1e293b;
+      border-radius: 12px;
+      width: 100%;
+      max-width: 900px;
+      padding: 1.5rem;
+      box-shadow: 0 15px 40px rgba(15, 23, 42, 0.5);
+    }
+    h1 { margin-top: 0; color: #f8fafc; text-align: center; }
+    .controls {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 0.5rem;
+      margin-bottom: 1rem;
+    }
+    button {
+      background: linear-gradient(90deg, #6366f1, #8b5cf6);
+      border: none;
+      padding: 0.75rem 1.5rem;
+      border-radius: 999px;
+      color: white;
+      font-weight: 700;
+      cursor: pointer;
+    }
+    button:disabled { opacity: 0.5; cursor: wait; }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      background: #0f172a;
+      border-radius: 12px;
+      overflow: hidden;
+    }
+    th, td {
+      padding: 0.75rem;
+      text-align: left;
+      border-bottom: 1px solid #1e293b;
+    }
+    th { background: #0f172a; color: #a5b4fc; }
+    tr:last-child td { border-bottom: none; }
+    .tag {
+      display: inline-block;
+      padding: 0.2rem 0.6rem;
+      border-radius: 999px;
+      font-size: 0.85rem;
+      font-weight: 600;
+    }
+    .tag.true { background: #dc2626; color: white; }
+    .tag.false { background: #15803d; color: white; }
+    #status { margin-left: auto; font-weight: 600; }
+  </style>
+</head>
+<body>
+  <div class="panel">
+    <h1>Decrypted Contact Preview</h1>
+    <div class="controls">
+      <button id="refresh-btn">Run ETL</button>
+      <span id="status"></span>
+    </div>
+    <div class="table-wrapper">
+      <table>
+        <thead>
+          <tr>
+            <th>ID</th>
+            <th>Name</th>
+            <th>Phone</th>
+            <th>Email</th>
+            <th>Flags</th>
+            <th>Created</th>
+          </tr>
+        </thead>
+        <tbody id="records-body">
+          <tr><td colspan="6" style="text-align:center;">Click "Run ETL" to load data</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <script>
+    const refreshBtn = document.getElementById("refresh-btn");
+    const statusEl = document.getElementById("status");
+    const tbody = document.getElementById("records-body");
+
+    async function loadRecords() {
+      statusEl.textContent = "Running ETL...";
+      refreshBtn.disabled = true;
+      tbody.innerHTML = `<tr><td colspan="6" style="text-align:center;">Loading...</td></tr>`;
+      try {
+        const resp = await fetch("/etl/records");
+        if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+        const data = await resp.json();
+        const rows = data.records || [];
+
+        if (rows.length === 0) {
+          tbody.innerHTML = `<tr><td colspan="6" style="text-align:center;">No records found.</td></tr>`;
+        } else {
+          tbody.innerHTML = rows.map((rec) => `
+            <tr>
+              <td>${rec.id}</td>
+              <td>${rec.first_name} ${rec.middle_name ?? ""} ${rec.last_name}</td>
+              <td>${rec.phone}</td>
+              <td>${rec.email}</td>
+              <td>
+                <span class="tag ${rec.phone_dnc}">Phone ${rec.phone_dnc ? "DNC" : "OK"}</span>
+                <span class="tag ${rec.email_dnc}">Email ${rec.email_dnc ? "DNC" : "OK"}</span>
+              </td>
+              <td>${rec.created_at ?? "-"}</td>
+            </tr>
+          `).join("");
+        }
+        statusEl.textContent = `Last updated: ${new Date().toLocaleTimeString()}`;
+      } catch (err) {
+        statusEl.textContent = "Failed to run ETL";
+        tbody.innerHTML = `<tr><td colspan="6" style="text-align:center;color:#f87171;">Error running ETL. Check API logs.</td></tr>`;
+        console.error(err);
+      } finally {
+        refreshBtn.disabled = false;
+      }
+    }
+
+    refreshBtn.addEventListener("click", loadRecords);
+  </script>
+</body>
+</html>
