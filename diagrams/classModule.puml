@@ -5,6 +5,9 @@ package "app" {
   class main {
     +startup_event()
     +submit_form()
+    +render_webform()
+    +render_etl_view()
+    +get_etl_records()
   }
 
   class crypto_utils {
@@ -20,6 +23,7 @@ package "app" {
   }
 
   class etl {
+    +decrypt_records()
     +run_etl()
   }
 
@@ -30,6 +34,7 @@ package "app" {
 
 main --> db
 main --> crypto_utils
+main --> etl
 etl --> db
 etl --> crypto_utils
 

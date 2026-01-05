@@ -5,11 +5,8 @@ participant "ETL Job" as ETL
 database "MySQL" as DB
 participant "Vault Transit" as Vault
 
-ETL -> DB: SELECT id, encrypted fields,\nkey_id FROM contact_form
-DB --> ETL: Result set
-
-ETL -> DB: SELECT id, dek_wrapped\nFROM encryption_keys WHERE id IN (key_ids)
-DB --> ETL: dek_wrapped set
+ETL -> DB: SELECT encrypted fields + dek_wrapped\nFROM contact_form JOIN encryption_keys\nON contact_form.key_id = encryption_keys.id
+DB --> ETL: Result set (ciphertext + wrapped DEK)
 
 ETL -> Vault: decrypt(pii-master, dek_wrapped) for each key_id
 Vault --> ETL: dek_plain for each key_id
